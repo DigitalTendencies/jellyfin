@@ -519,13 +519,15 @@ namespace Jellyfin.Api.Controllers
         /// Reports that new episodes of a series have been added by an external source.
         /// </summary>
         /// <param name="tvdbId">The tvdbId.</param>
+        /// <param name="tmdbId">The tmdbId.</param>
+        /// <param name="imdbId">The imdbId.</param>
         /// <response code="204">Report success.</response>
         /// <returns>A <see cref="NoContentResult"/>.</returns>
         [HttpPost("Library/Series/Added", Name = "PostAddedSeries")]
         [HttpPost("Library/Series/Updated")]
         [Authorize(Policy = Policies.DefaultAuthorization)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public ActionResult PostUpdatedSeries([FromQuery] string? tvdbId)
+        public ActionResult PostUpdatedSeries([FromQuery] string? tvdbId,[FromQuery] string? tmdbId, [FromQuery] string? imdbId)
         {
             var series = _libraryManager.GetItemList(new InternalItemsQuery
             {
@@ -534,8 +536,26 @@ namespace Jellyfin.Api.Controllers
                 {
                     EnableImages = false
                 }
-            }).Where(i => string.Equals(tvdbId, i.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tvdb), StringComparison.OrdinalIgnoreCase)).ToArray();
-
+            });
+            
+            
+            if (!string.IsNullOrWhiteSpace(tvdbId))
+            {
+                series = series.Where(i => string.Equals(tvdbId, i.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tvdb), StringComparison.OrdinalIgnoreCase)).ToArray();
+            }
+            else if (!string.IsNullOrWhiteSpace(tmdbId))
+            {
+                series = series.Where(i => string.Equals(tmdbId, i.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb), StringComparison.OrdinalIgnoreCase)).ToArray();
+            }
+            else if (!string.IsNullOrWhiteSpace(imdbId))
+            {
+                series = series.Where(i => string.Equals(imdbId, i.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Imdb), StringComparison.OrdinalIgnoreCase)).ToArray();
+            }
+            else
+            {
+                series = new List<BaseItem>();
+            }
+            
             foreach (var item in series)
             {
                 _libraryMonitor.ReportFileSystemChanged(item.Path);
